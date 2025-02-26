@@ -6,7 +6,7 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - mocks_db:/app/mocks.db # Volume для SQLite файла
+      - mocks_db:/app/data # Volume для SQLite файла
     environment:
       - PYTHONUNBUFFERED=1
 
