@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Mock API Generator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1, h2 {
+            color: #333;
+        }
+        form {
+            background-color: #f5f5f5;
+            padding: 20px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        input, button {
+            margin: 10px 0;
+            padding: 8px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            padding: 10px 15px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        li {
+            background-color: #f9f9f9;
+            margin: 5px 0;
+            padding: 10px;
+            border-radius: 3px;
+        }
+        .message {
+            background-color: #d4edda;
+            color: #155724;
+            padding: 10px;
+            margin-bottom: 15px;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Mock API Generator</h1>
+    
+    {% if message %}
+    <div class="message">
+        {{ message }}
+    </div>
+    {% endif %}
+    
+    <form action="/upload-swagger/" method="post" enctype="multipart/form-data">
+        <h2>Upload Swagger File</h2>
+        <div>
+            <label for="mock_name">Mock API Name:</label>
+            <input type="text" id="mock_name" name="mock_name" placeholder="Mock API Name" required>
+        </div>
+        <div>
+            <label for="file">Swagger File (JSON/YAML):</label>
+            <input type="file" id="file" name="file" accept=".json,.yaml,.yml" required>
+        </div>
+        <button type="submit">Create Mock API</button>
+    </form>
+    
+    <h2>Active Mocks:</h2>
+    {% if mocks %}
+        <ul>
+            {% for mock in mocks %}
+                <li>
+                    <strong>{{ mock.name }}</strong> - 
+                    <a href="/{{ mock.base_path }}/docs" target="_blank">
+                        /{{ mock.base_path }}
+                    </a>
+                    (Swagger UI)
+                    <a href="/manage/{{ mock.base_path }}" style="margin-left: 20px; color: blue;">Manage Endpoints</a>
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>No active mock APIs. Upload a Swagger file to create one.</p>
+    {% endif %}
+</body>
+</html>

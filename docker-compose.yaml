@@ -1,0 +1,14 @@
+version: "3.8"
+
+services:
+  mock-server:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - mocks_db:/app/mocks.db # Volume для SQLite файла
+    environment:
+      - PYTHONUNBUFFERED=1
+
+volumes:
+  mocks_db: # Постоянное хранилище для БД
