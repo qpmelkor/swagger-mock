@@ -37,7 +37,7 @@ async def root(request: Request, db: Session = Depends(get_db)):
 def mount_mock_app(base_path: str, mock_id: int):
     router = APIRouter()
 
-    async def handler_wrapper(endpoint_path: str, endpoint_method: str):
+    def handler_wrapper(endpoint_path: str, endpoint_method: str):
         async def route_handler(request: Request):
             db = SessionLocal()
             try:
@@ -83,15 +83,15 @@ def mount_mock_app(base_path: str, mock_id: int):
             mock_id=mock_id).all()
 
         for endpoint in endpoints:
-            # Create a closure to capture the current endpoint path and method
-            # Create a route handler that accepts request parameters
-            def create_route_handler(ep_path=endpoint.path, ep_method=endpoint.method):
-                return handler_wrapper(ep_path, ep_method)
-
+            # Store current values to avoid closure issues
+            current_path = endpoint.path
+            current_method = endpoint.method
+            
+            # Register route directly with the handler wrapper
             router.add_api_route(
-                endpoint.path,
-                create_route_handler(),
-                methods=[endpoint.method.upper()]
+                path=current_path,
+                endpoint=handler_wrapper(current_path, current_method),
+                methods=[current_method.upper()]
             )
     finally:
         db.close()
