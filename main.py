@@ -76,8 +76,6 @@ def mount_mock_app(base_path: str, mock_id: int):
             finally:
                 db.close()
         return route_handler
-        finally:
-            db.close()
 
     db = SessionLocal()
     try:
