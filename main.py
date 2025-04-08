@@ -38,27 +38,44 @@ def mount_mock_app(base_path: str, mock_id: int):
     router = APIRouter()
 
     async def handler_wrapper(endpoint_path: str, endpoint_method: str):
-        db = SessionLocal()
-        try:
-            endpoint = db.query(models.EndpointResponse).filter(
-                models.EndpointResponse.mock_id == mock_id,
-                models.EndpointResponse.path == endpoint_path,
-                models.EndpointResponse.method == endpoint_method.lower()
-            ).first()
+        async def route_handler(request: Request):
+            db = SessionLocal()
+            try:
+                endpoint = db.query(models.EndpointResponse).filter(
+                    models.EndpointResponse.mock_id == mock_id,
+                    models.EndpointResponse.path == endpoint_path,
+                    models.EndpointResponse.method == endpoint_method.lower()
+                ).first()
 
-            if not endpoint:
-                return JSONResponse({"error": "Not found"}, 404)
+                if not endpoint:
+                    return JSONResponse({"error": "Not found"}, 404)
 
-            headers = json.loads(
-                endpoint.response_headers) if endpoint.response_headers else None
-            body = json.loads(
-                endpoint.response_body) if endpoint.response_body else None
+                headers = json.loads(
+                    endpoint.response_headers) if endpoint.response_headers else None
 
-            return JSONResponse(
-                content=body,
-                headers=headers,
-                status_code=200
-            )
+                # Check parameter matches
+                path_params = request.path_params
+                for param in endpoint.parameters:
+                    if param.param_name in path_params and path_params.get(param.param_name) == param.param_value:
+                        return JSONResponse(
+                            content=json.loads(param.response_body),
+                            headers=headers,
+                            status_code=200
+                        )
+
+                # Return default response if no matches
+                body = json.loads(
+                    endpoint.default_response) if endpoint.default_response else json.loads(
+                    endpoint.response_body)
+
+                return JSONResponse(
+                    content=body,
+                    headers=headers,
+                    status_code=200
+                )
+            finally:
+                db.close()
+        return route_handler
         finally:
             db.close()
 
@@ -69,10 +86,9 @@ def mount_mock_app(base_path: str, mock_id: int):
 
         for endpoint in endpoints:
             # Create a closure to capture the current endpoint path and method
+            # Create a route handler that accepts request parameters
             def create_route_handler(ep_path=endpoint.path, ep_method=endpoint.method):
-                async def route_handler():
-                    return await handler_wrapper(ep_path, ep_method)
-                return route_handler
+                return handler_wrapper(ep_path, ep_method)
 
             router.add_api_route(
                 endpoint.path,
@@ -198,7 +214,8 @@ async def edit_endpoint_form(
             "request": request,
             "endpoint": endpoint,
             "headers": json.dumps(json.loads(endpoint.response_headers), indent=2),
-            "body": json.dumps(json.loads(endpoint.response_body), indent=2)
+            "body": json.dumps(json.loads(endpoint.response_body), indent=2),
+            "default_response": json.dumps(json.loads(endpoint.default_response), indent=2) if endpoint.default_response else json.dumps(json.loads(endpoint.response_body), indent=2)
         }
     )
 
@@ -209,11 +226,19 @@ async def update_endpoint(
     endpoint_id: int,
     response_body: str = Form(...),
     response_headers: str = Form(...),
+    default_response: str = Form(...),
+    param_name: list[str] = Form([]),
+    param_value: list[str] = Form([]),
+    param_response: list[str] = Form([]),
     db: Session = Depends(get_db)
 ):
     try:
         json.loads(response_body)
         json.loads(response_headers)
+        json.loads(default_response)
+        for resp in param_response:
+            if resp:
+                json.loads(resp)
     except json.JSONDecodeError:
         raise HTTPException(400, "Invalid JSON format")
 
@@ -225,6 +250,22 @@ async def update_endpoint(
 
     endpoint.response_body = response_body
     endpoint.response_headers = response_headers
+    endpoint.default_response = default_response
+    
+    # Clear existing parameters
+    db.query(models.EndpointParameter).filter_by(endpoint_id=endpoint_id).delete()
+    
+    # Add new parameters
+    for name, value, response in zip(param_name, param_value, param_response):
+        if name and value and response:
+            db.add(models.EndpointParameter(
+                endpoint_id=endpoint_id,
+                param_name=name,
+                param_value=value,
+                response_body=response,
+                response_headers=endpoint.response_headers
+            ))
+    
     db.commit()
 
     return RedirectResponse(

@@ -44,6 +44,24 @@
             font-weight: bold;
             color: #0066cc;
         }
+        .param-group {
+            margin-bottom: 15px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .param-group input {
+            width: 45%;
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+        }
+        .param-group textarea {
+            height: 120px;
+        }
+        #param-responses {
+            margin-bottom: 15px;
+        }
     </style>
 </head>
 <body>
@@ -64,7 +82,38 @@
             <textarea name="response_headers">{{ headers }}</textarea>
         </div>
         
+        <div class="form-group">
+            <label>Default Response (JSON):</label>
+            <textarea name="default_response">{{ default_response }}</textarea>
+        </div>
+
+        <h3>Parameter-based Responses</h3>
+        <div id="param-responses">
+            {% for param in endpoint.parameters %}
+            <div class="param-group">
+                <input type="text" name="param_name" placeholder="Parameter name" value="{{ param.param_name }}">
+                <input type="text" name="param_value" placeholder="Value match" value="{{ param.param_value }}">
+                <textarea name="param_response">{{ param.response_body }}</textarea>
+            </div>
+            {% endfor %}
+        </div>
+        <button type="button" onclick="addParamField()">Add Parameter Condition</button>
+        
         <button type="submit">Save Changes</button>
+
+        <script>
+        function addParamField() {
+            const container = document.getElementById('param-responses');
+            const newField = document.createElement('div');
+            newField.className = 'param-group';
+            newField.innerHTML = `
+                <input type="text" name="param_name" placeholder="Parameter name">
+                <input type="text" name="param_value" placeholder="Value match">
+                <textarea name="param_response" placeholder="Response JSON"></textarea>
+            `;
+            container.appendChild(newField);
+        }
+        </script>
     </form>
 </body>
 </html>
